@@ -1,12 +1,9 @@
 import os
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+from dotenv import load_dotenv
 
-from dotenv import load_dotenv  # Importar dotenv
-
-# Cargar las variables de entorno desde el archivo .env
 load_dotenv()
-
 
 app = Flask(__name__)
 
@@ -19,7 +16,6 @@ db = SQLAlchemy(app)
 # Definición del modelo de la tabla 'estudiantes'
 class Estudiante(db.Model):
     __tablename__ = 'alumnos'
-    __table_args__ = {'schema': 'cetech'}  # Especifica el esquema
     no_control = db.Column(db.String, primary_key=True)
     nombre = db.Column(db.String, nullable=True)
     ap_paterno = db.Column(db.String, nullable=True)
@@ -45,6 +41,7 @@ def obtener_estudiantes():
 @app.route('/estudiantes', methods=['POST'])
 def agregar_estudiante():
     data = request.get_json()
+    
     nuevo_estudiante = Estudiante(
         no_control=data['no_control'],
         nombre=data['nombre'],
@@ -93,6 +90,34 @@ def eliminar_estudiante(no_control):
     db.session.delete(estudiante)
     db.session.commit()
     return jsonify({'mensaje': 'Estudiante eliminado exitosamente'})
+
+# Endpoint para actualizar un campo de un estudiante por no_control
+@app.route('/estudiantes/<no_control>', methods=['PATCH'])
+def cambiar_estudiante(no_control):
+    estudiante = Estudiante.query.get(no_control)
+    if estudiante is None:
+        return jsonify({'mensaje': 'Estudiante no encontrado'}), 404
+
+    # Obtener los datos enviados en el cuerpo de la petición
+    datos = request.get_json()
+
+    # Verificar si se envió un campo específico para actualizar
+    if 'nombre' in datos:
+        estudiante.nombre = datos['nombre']
+    elif 'ap_paterno' in datos:
+        estudiante.ap_paterno = datos['ap_paterno']
+    elif 'ap_materno' in datos:
+        estudiante.ap_materno = datos['ap_materno']
+    elif 'semestre' in datos:
+        estudiante.semestre = datos['semestre']
+    else:
+        return jsonify({'mensaje': 'Campo no válido para actualizar'}), 400
+
+    # Guardar los cambios en la base de datos
+    db.session.commit()
+
+    return jsonify({'mensaje': 'Estudiante actualizado correctamente'})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
